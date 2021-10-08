@@ -1,40 +1,35 @@
-#include "logger.hpp" 
+#include "logger.hpp"
 #include <chrono>
 #include <thread>
 
 
 int main()
 {
+    out(0).set_print_level(2);
     out(1) << bold;
     out(1) << blink;    
 
-    out(2) << "My first message :)" << std::endl;
+    out(2) << "print level 2" << std::endl;
 
-    out(2) << red;
-    out(1) << "My second message :)" << std::endl;
+    out(2) << reset << green;
+    out(1) << "print level 1" << std::endl;
     out(0) << reset;
-    out(0) << "My third message :)" << std::endl;
+    out(0) << "print level 0" << std::endl;
 
-    out(0).print_all();
-
-    std::cout << "aaa" << '\r' << std::endl;
 
     for (size_t i = 0 ; i < 20; ++i )
     {
         out(0).spin_bar("spinning bar: ");
-        std::chrono::milliseconds dura(100);
+        std::chrono::milliseconds dura(50);
         std::this_thread::sleep_for( dura );
-
-        out(0) << "aa" << std::endl;
     }
     out(0).stop_spinning_bar();
 
     for (size_t i = 0; i <= 50; ++i)
     {
         out(0).progress_bar("my bar: ", i,50);
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
-        out(0) << " aaa " << std::endl;
     }
 
     out(0).stop_progress_bar();
@@ -42,11 +37,12 @@ int main()
     for (size_t i = 0; i <= 50; ++i)
     {
         out(0).progress_bar("my bar: ", (double)i/50.0);
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
-        out(0) << " aaa " << std::endl;
     }
 
     out(0).stop_progress_bar();
 
+    std::cout << " SAVED LOGS ---------------------- " << std::endl;
+    out(0).print_all();
 }

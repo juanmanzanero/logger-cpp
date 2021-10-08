@@ -59,6 +59,8 @@ class Logger
 
     void stop_progress_bar();
 
+    void set_print_level(const size_t print_level);
+
  private:
     std::ostream& _sOut;
     std::array<std::ostringstream,n_print_levels> _ss;
@@ -77,9 +79,9 @@ class Logger
     constexpr static const inline std::array<const char*,9> _progress_bar_chars = {" ", "▏", "▎", "▍", "▌", "▋", "▊", "▉", "█"};
     constexpr static int _progress_bar_width = 40;
 
-    static Logger out_private;
-
-    friend Logger& out(size_t current_print_level);
 };
+
+extern Logger out;
+extern Logger err;
 
 #endif

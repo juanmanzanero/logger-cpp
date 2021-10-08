@@ -3,7 +3,9 @@
 
 #include "logger.h" 
 
-inline Logger Logger::out_private(std::cout,1);
+
+inline Logger out(std::cout,n_print_levels);
+inline Logger err(std::cerr,n_print_levels);
 
 inline Logger& Logger::operator()(const size_t current_print_level)
 {
@@ -92,14 +94,6 @@ inline void Logger::print_all() const
         std::cout << _ss[i].str();
         std::cout << "------------------- " << std::endl;
     }
-
-    std::cout << "is a tty: " << _is_tty << std::endl;
-}
-
-
-inline Logger& out(size_t current_print_level)
-{
-    return Logger::out_private(current_print_level);
 }
 
 
@@ -211,6 +205,19 @@ inline void Logger::stop_progress_bar()
     {
         _sOut << "\33[2K\r" ;
         _progress_bar_on = false;
+    }
+}
+
+
+inline void Logger::set_print_level(const size_t print_level)
+{
+    if ( print_level < n_print_levels )
+    {
+        _print_level = print_level;
+    }
+    else
+    {
+        throw std::runtime_error("Print level is out of bounds");
     }
 }
 
