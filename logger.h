@@ -64,6 +64,9 @@ class Logger
 
     void set_print_level(const size_t print_level);
 
+    static Logger out;
+    static Logger err;
+
  private:
     std::ostream& _sOut;
     std::array<std::ostringstream,n_print_levels> _ss;
@@ -84,7 +87,7 @@ class Logger
 
 };
 
-extern Logger out;
-extern Logger err;
+Logger& out = Logger::out;
+Logger& err = Logger::err;
 
 #endif

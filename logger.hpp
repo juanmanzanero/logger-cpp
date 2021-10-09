@@ -4,8 +4,8 @@
 #include "logger.h" 
 
 
-inline Logger out(std::cout,n_print_levels-1);
-inline Logger err(std::cerr,n_print_levels-1);
+inline Logger Logger::out(std::cout,n_print_levels-1);
+inline Logger Logger::err(std::cerr,n_print_levels-1);
 
 inline Logger& Logger::operator()(const size_t current_print_level)
 {
