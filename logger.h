@@ -32,6 +32,9 @@ class Logger
 
     Logger(std::ostream& sOut, const size_t print_level) : _sOut(sOut), _print_level(print_level) 
     {
+        if ( !(print_level < n_print_levels) )
+            throw std::runtime_error("Print level is higher than the number of requested print levels");
+
         if ( &_sOut == &std::cout)
         {
             _is_tty = isatty(1); 

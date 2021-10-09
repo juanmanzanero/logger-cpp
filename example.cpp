@@ -34,9 +34,13 @@ int main()
 
     out(0).stop_progress_bar();
 
+    out(0) << std::endl;
     for (size_t i = 0; i <= 50; ++i)
     {
         out(0).progress_bar("my bar: ", (double)i/50.0);
+        if ( i % 10 == 0 )
+            out(2) << "i = " << i << " completed" << std::endl;
+
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
     }

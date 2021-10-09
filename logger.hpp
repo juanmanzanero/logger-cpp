@@ -4,8 +4,8 @@
 #include "logger.h" 
 
 
-inline Logger out(std::cout,n_print_levels);
-inline Logger err(std::cerr,n_print_levels);
+inline Logger out(std::cout,n_print_levels-1);
+inline Logger err(std::cerr,n_print_levels-1);
 
 inline Logger& Logger::operator()(const size_t current_print_level)
 {
@@ -146,7 +146,7 @@ inline void Logger::progress_bar(const std::string& header, const int curr, cons
 
         for (int i = 0; i < _progress_bar_width-ifills-1; i++) 
         {
-            _sOut << _progress_bar_chars[0];
+            _sOut << "▏";
         }
 
         _sOut << "▏";
@@ -185,7 +185,7 @@ inline void Logger::progress_bar(const std::string& header, double percentage)
 
         for (int i = 0; i < _progress_bar_width-ifills-1; i++) 
         {
-            _sOut << _progress_bar_chars[0];
+            _sOut << "▏";
         }
 
         _sOut << "▏";
