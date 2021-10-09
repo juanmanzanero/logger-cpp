@@ -22,7 +22,7 @@ inline Logger& Logger::operator()(const size_t current_print_level)
 }
 
 
-Logger& Logger::operator<<(const Color& c)
+inline Logger& Logger::operator<<(const Color& c)
 {
     if ( _is_tty && (_print_level >= _current_print_level) )
     {
