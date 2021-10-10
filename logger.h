@@ -87,7 +87,7 @@ class Logger
 
 };
 
-Logger& out = Logger::out;
-Logger& err = Logger::err;
+inline Logger& out = Logger::out;
+inline Logger& err = Logger::err;
 
 #endif
