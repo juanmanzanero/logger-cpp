@@ -77,6 +77,10 @@ class Logger
     void enable_logdate() { _logdate = true; }
     void disable_logdate() { _logdate = false; }
 
+#ifdef _WIN32
+    void print_to_vs_console() { _print_to_vs_console = true; }
+#endif
+
 
     void clear()
     {
@@ -95,6 +99,9 @@ class Logger
 
     size_t _print_level         = n_print_levels;
     size_t _current_print_level = n_print_levels;
+#ifdef _WIN32
+    bool _print_to_vs_console   = false;
+#endif
     bool _logdate               = true;
     bool _is_first_message      = true;
     bool _is_tty                = false;

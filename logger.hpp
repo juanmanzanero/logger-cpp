@@ -61,7 +61,28 @@ inline Logger& Logger::operator<<(const T& t)
                 stop_progress_bar();
             }
 
-            _sOut << logdate << t;
+#ifdef _WIN32
+            if (_print_to_vs_console) {
+                std::ostringstream s;
+                s << logdate << t;
+                const auto s_str = s.str();
+                size_t reqLength = ::MultiByteToWideChar(CP_UTF8, 0, s_str.c_str(), (int)s_str.length(), 0, 0);
+
+                // construct new string of required length
+                std::wstring s_wstr(reqLength, L'\0');
+
+                // convert old string to new string
+                ::MultiByteToWideChar(CP_UTF8, 0, s_str.c_str(), (int)s_str.length(), &s_wstr[0], (int)s_wstr.length());
+
+                OutputDebugStringW(s_wstr.c_str());
+            }
+            else {
+#endif
+                _sOut << logdate << t;
+
+#ifdef _WIN32
+            }
+#endif
         }
 
         for (size_t i = _current_print_level; i < n_print_levels; ++i)
@@ -90,7 +111,19 @@ inline Logger& Logger::operator<<(std::ostream&(*f)(std::ostream&))
                 stop_progress_bar();
             }
 
-            (*f)(_sOut);
+#ifdef _WIN32
+            if (_print_to_vs_console) {
+                if (f == std::endl<char, std::char_traits<char>>) {
+                    OutputDebugString(L"\n");
+                }
+            }
+            else {
+#endif
+                (*f)(_sOut);
+
+#ifdef _WIN32
+            }
+#endif
         }
 
         for (size_t i = _current_print_level; i < n_print_levels; ++i)
