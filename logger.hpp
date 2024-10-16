@@ -114,7 +114,7 @@ inline Logger& Logger::operator<<(std::ostream&(*f)(std::ostream&))
 #ifdef _WIN32
             if (_print_to_vs_console) {
                 if (f == std::endl<char, std::char_traits<char>>) {
-                    OutputDebugString(L"\n");
+                    OutputDebugStringW(L"\n");
                 }
             }
             else {
