@@ -1,11 +1,13 @@
 #ifndef __LOGGER_H__
 #define __LOGGER_H__
 
-#ifdef _WIN32
-#include <io.h>
+#ifndef _MSC_VER
+#include <unistd.h>
 #else
-#include<unistd.h>
+#include <io.h>
+#define isatty _isatty
 #endif
+
 #include<iostream>
 #include<array>
 #include<sstream>
@@ -27,12 +29,12 @@ class Color
     const std::string _color_code;
 };
 
-const inline static Color green("32");
-const inline static Color red("31");
-const inline static Color reset("0");
-const inline static Color bold("1");
-const inline static Color blink("5");
-const inline static Color underline("4");
+inline const Color green("32");
+inline const Color red("31");
+inline const Color reset("0");
+inline const Color bold("1");
+inline const Color blink("5");
+inline const Color underline("4");
 
 class Logger
 {
@@ -45,11 +47,7 @@ class Logger
 
         if ( &_sOut == &std::cout)
         {
-#ifdef _WIN32
-            _is_tty = _isatty(1); 
-#else
-            _is_tty = isatty(1); 
-#endif
+            _is_tty = isatty(1);
         }
     }
 
@@ -103,12 +101,12 @@ class Logger
 
     // Spinning bar ---------------------------
     bool _spinning_bar_on = false;
-    constexpr static const inline std::array<char,4> _spinning_bar_chars = {'/','|','-','\\'};
+    static constexpr std::array<char,4> _spinning_bar_chars = {'/','|','-','\\'};
     int _spinning_bar_counter = 0;
 
     // Progress bar ----------------------------
     bool _progress_bar_on = false;
-    constexpr static const inline std::array<const char*,9> _progress_bar_chars = {" ", "▏", "▎", "▍", "▌", "▋", "▊", "▉", "█"};
+    static constexpr std::array<const char*,9> _progress_bar_chars = {" ", "▏", "▎", "▍", "▌", "▋", "▊", "▉", "█"};
     constexpr static int _progress_bar_width = 40;
 
 };

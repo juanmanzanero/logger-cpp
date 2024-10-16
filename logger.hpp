@@ -160,7 +160,7 @@ inline void Logger::progress_bar(const std::string& header, const int curr, cons
 
         if (curr != tot)
         {
-            _sOut << _progress_bar_chars[(int)(8.0)*(fills-ifills)];
+            _sOut << _progress_bar_chars[static_cast<int>((8.0)*(fills-ifills))];
         }
 
         for (int i = 0; i < _progress_bar_width-ifills-1; i++) 
@@ -199,7 +199,7 @@ inline void Logger::progress_bar(const std::string& header, double percentage)
 
         if (curr != tot)
         {
-            _sOut << _progress_bar_chars[(int)(8.0)*(fills-ifills)];
+            _sOut << _progress_bar_chars[static_cast<int>((8.0)*(fills-ifills))];
         }
 
         for (int i = 0; i < _progress_bar_width-ifills-1; i++) 
