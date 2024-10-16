@@ -1,5 +1,5 @@
-#ifndef __LOGGER_H__
-#define __LOGGER_H__
+#ifndef LOGGERCPP_LOGGER_H
+#define LOGGERCPP_LOGGER_H
 
 #ifndef _MSC_VER
 #include <unistd.h>
@@ -12,20 +12,31 @@
 #include<array>
 #include<sstream>
 #include<iomanip>
+#include <algorithm>
 
+namespace logger {
 
-#ifndef LOGGER_N_PRINT_LEVELS
-#define LOGGER_N_PRINT_LEVELS 3
-#endif
-inline constexpr size_t n_print_levels = LOGGER_N_PRINT_LEVELS;
+inline std::wstring string_to_wstring(const std::string& input_string)
+{
+    std::size_t reqLength = ::MultiByteToWideChar(CP_UTF8, 0, input_string.c_str(), (int)input_string.length(), 0, 0);
+
+    // construct new string of required length
+    std::wstring input_wstring(reqLength, L'\0');
+
+    // convert old string to new string
+    ::MultiByteToWideChar(CP_UTF8, 0, input_string.c_str(), (int)input_string.length(), &input_wstring[0], (int)input_wstring.length());
+
+    return input_wstring;
+}
+
 
 class Color
 {
- public:
+public:
     Color(const std::string& color_code) : _color_code(color_code) {}
 
     constexpr const std::string& get_code() const { return _color_code; }
- private:
+private:
     const std::string _color_code;
 };
 
@@ -38,87 +49,378 @@ inline const Color underline("4");
 
 class Logger
 {
- public:
+public:
 
-    Logger(std::ostream& sOut, const size_t print_level) : _sOut(sOut), _print_level(print_level) 
+    struct Configuration
     {
-        if ( !(print_level < n_print_levels) )
-            throw std::runtime_error("Print level is higher than the number of requested print levels");
+        bool logmode = false;
+        bool is_tty = false;
+        std::size_t progress_bar_width = 40u;
 
-        if ( &_sOut == &std::cout)
-        {
-            _is_tty = isatty(1);
+#ifdef _MSC_VER
+        bool print_to_vs_console = false;
+#endif
+
+    };
+
+
+
+    Logger(std::ostream& console_stream) : _console_stream(console_stream)
+    {
+        //
+        // initializes the logger with a default print
+        // level of 0 and no string streams
+        //
+
+        if (&_console_stream == &std::cout) {
+            _configuration.is_tty = isatty(1);
         }
     }
 
-    Logger& operator()(const size_t current_print_level);
 
-    void print_all() const;
+    void set_maximum_print_level_string_streams(int max_print_level)
+    {
+        _string_streams.resize(max_print_level + 1);
+    }
 
-    Logger& operator<<(const Color& c);
- 
+
+    void set_console_print_level(std::size_t console_print_level)
+    {
+        _state.console_print_level = console_print_level;
+    }
+
+
+    Configuration& configuration() { return _configuration; }
+
+
+    Logger& operator()(const std::size_t new_input_print_level)
+    {
+        _state.input_print_level = new_input_print_level;
+
+        return *this;
+    }
+
+
+    void print_all() const
+    {
+        for (std::size_t i = 0; i < _string_streams.size(); ++i) {
+            std::cout << "Print level i = " << i << std::endl;
+            std::cout << _string_streams[i].str();
+            std::cout << "------------------- " << std::endl;
+        }
+    }
+
+
+    Logger& operator<<(const Color& c)
+    {
+        if (_configuration.is_tty && (_state.console_print_level >= _state.input_print_level))
+        {
+            _console_stream << "\033[" << c.get_code() << "m";
+        }
+
+        return *this;
+    }
+
+
     template<class T>
-    Logger& operator<<(const T& t);
+    Logger& operator<<(const T& t)
+    {
+        if (_state.input_print_level <= _state.console_print_level || (_state.input_print_level < _string_streams.size())) {
 
-    Logger& operator<<(std::ostream&(*f)(std::ostream&));
+            // we will print to somewhere.
+            // if logmode, write the current date/time to a string
+            const auto datestr = get_log_entry_text();
 
-    void spin_bar(const std::string& header);
+            if (_state.input_print_level <= _state.console_print_level) {
 
-    void stop_spinning_bar();
+                // write to console
 
-    void progress_bar(const std::string& header, const int curr, const int tot);
+                // stop spinning/progress bars if they are running
+                if (_configuration.is_tty) {
+                    if (_state.spinning_bar_on) {
+                        stop_spinning_bar();
+                    }
 
-    void progress_bar(const std::string& header, double percentage);
+                    if (_state.progress_bar_on) {
+                        stop_progress_bar();
+                    }
+                }
 
-    void stop_progress_bar();
 
-    void set_print_level(const size_t print_level);
-    
-    void enable_logdate() { _logdate = true; }
-    void disable_logdate() { _logdate = false; }
+#ifdef _MSC_VER
+                if (_configuration.print_to_vs_console) {
+
+                    // instead of writing to cout/cerr, we write to
+                    // the Visual Studio Output
+                    std::ostringstream s;
+                    s << datestr << t;
+                    const auto s_wstr = string_to_wstring(s.str());
+                    OutputDebugStringW(s_wstr.c_str());
+
+                }
+                else {
+#endif
+                    _console_stream << datestr << t;
+#ifdef _WIN32
+                }
+#endif
+
+            }
+
+
+            // write to string streams
+            for (std::size_t i = _state.input_print_level; i < _string_streams.size(); ++i) {
+                _string_streams[i] << datestr << t;
+            }
+
+        }
+        return *this;
+    }
+
+
+    Logger& operator<<(std::ostream& (*f)(std::ostream&))
+    {
+        if (_state.input_print_level <= _state.console_print_level || (_state.input_print_level < _string_streams.size())) {
+
+            // we will print to somewhere
+            const auto datestr = get_log_entry_text();
+
+            if (_state.input_print_level <= _state.console_print_level) {
+
+                // print to console
+
+                // stop spinning/progress bars if they are running
+                if (_configuration.is_tty) {
+                    if (_state.spinning_bar_on) {
+                        stop_spinning_bar();
+                    }
+
+                    if (_state.progress_bar_on) {
+                        stop_progress_bar();
+                    }
+                }
 
 #ifdef _WIN32
-    void print_to_vs_console() { _print_to_vs_console = true; }
+                if (_configuration.print_to_vs_console) {
+
+                    if (f == std::endl<char, std::char_traits<char>>) {
+                        const auto wstr = string_to_wstring(datestr + "\n");
+                        OutputDebugString(wstr.c_str());
+                    }
+
+                }
+                else {
 #endif
+                    _console_stream << datestr;
+                    (*f)(_console_stream);
+
+#ifdef _WIN32
+                }
+#endif
+            }
+
+            for (std::size_t i = _state.input_print_level; i < _string_streams.size(); ++i) {
+                _string_streams[i] << datestr;
+                (*f)(_string_streams[i]);
+            }
+
+            _state.is_first_message = true;
+        }
+
+        return *this;
+    }
+
+
+    void spin_bar(const std::string& header)
+    {
+        if (_configuration.is_tty && (_state.console_print_level >= _state.input_print_level)) {
+            _state.spinning_bar_on = true;
+            _console_stream << "\33[2K\r";
+            _console_stream << header << _spinning_bar_chars[_state.spinning_bar_counter];
+            _state.spinning_bar_counter++;
+            _state.spinning_bar_counter = (_state.spinning_bar_counter) % 4;
+            _console_stream << std::flush;
+        }
+    }
+
+
+    void stop_spinning_bar()
+    {
+        if (_configuration.is_tty && _state.spinning_bar_on) {
+
+            _console_stream << "\33[2K\r";
+            _state.spinning_bar_on = false;
+        }
+    }
+
+
+    void progress_bar(const std::string& header, const int curr, const int tot)
+    {
+        if (_configuration.is_tty && (_state.console_print_level >= _state.input_print_level)) {
+
+            if (_state.spinning_bar_on) {
+                stop_spinning_bar();
+            }
+
+            _state.progress_bar_on = true;
+            _console_stream << "\015";
+            _console_stream << header;
+
+            double fills = (static_cast<double>(curr) / static_cast<double>(tot) * _configuration.progress_bar_width);
+            int ifills = (int)fills;
+
+            for (int i = 0; i < ifills; i++) {
+                _console_stream << _progress_bar_chars[8];
+            }
+
+            if (curr != tot) {
+                _console_stream << _progress_bar_chars[static_cast<int>((8.0) * (fills - ifills))];
+            }
+
+            for (int i = 0; i < _configuration.progress_bar_width - ifills - 1; i++) {
+                _console_stream << "▏";
+            }
+
+            _console_stream << "▏";
+
+            _console_stream << " (" << curr << "/" << tot << ")";
+            _console_stream << std::flush;
+        }
+    }
+
+
+    void progress_bar(const std::string& header, double percentage)
+    {
+        if (_configuration.is_tty && (_state.console_print_level >= _state.input_print_level)) {
+
+            percentage = min(double{ 1.0 }, percentage);
+
+            if (_state.spinning_bar_on) stop_spinning_bar();
+
+            _state.progress_bar_on = true;
+            _console_stream << "\015";
+            _console_stream << header;
+            constexpr int tot = 1000;
+            int curr = static_cast<int>(percentage * tot);
+
+            double fills = (static_cast<double>(curr) / static_cast<double>(tot) * _configuration.progress_bar_width);
+            int ifills = (int)fills;
+
+            for (int i = 0; i < ifills; i++) {
+                _console_stream << _progress_bar_chars[8];
+            }
+
+            if (curr != tot) {
+                _console_stream << _progress_bar_chars[static_cast<int>((8.0) * (fills - ifills))];
+            }
+
+            for (int i = 0; i < _configuration.progress_bar_width - ifills - 1; i++) {
+                _console_stream << "▏";
+            }
+
+            _console_stream << "▏";
+
+            char buffer[10];
+            sprintf_s(buffer, "%*.1f", 5, percentage * 100);
+
+            _console_stream << " (" << buffer << "%" << ")";
+            _console_stream << std::flush;
+        }
+    }
+
+
+    void stop_progress_bar()
+    {
+        if (_configuration.is_tty && _state.progress_bar_on) {
+
+            _console_stream << "\33[2K\r";
+            _state.progress_bar_on = false;
+        }
+    }
 
 
     void clear()
     {
-        for (auto& ss : _ss) {
+        for (auto& ss : _string_streams) {
+
             ss.str("");
             ss.clear();
         }
+
+
+        _string_streams.clear();
+        _string_streams.shrink_to_fit();
     }
 
     static Logger out;
     static Logger err;
 
- private:
-    std::ostream& _sOut;
-    std::array<std::ostringstream,n_print_levels> _ss;
+private:
 
-    size_t _print_level         = n_print_levels;
-    size_t _current_print_level = n_print_levels;
-#ifdef _WIN32
-    bool _print_to_vs_console   = false;
+    std::string get_log_entry_text()
+    {
+        //
+        // Prints current date/time in [YYYY-MM-DDTHH:mm:ss] format
+        // In windows it also shows the current thread Id
+        //
+
+        if (_configuration.logmode && _state.is_first_message) {
+
+            auto time = std::time(nullptr);
+            std::ostringstream sout;
+
+#ifdef _MSC_VER
+            struct tm buf;
+            gmtime_s(&buf, &time);
+            char threadstr[10];
+            sprintf_s(threadstr, "%05d", GetCurrentThreadId());
+            sout << "[(" << threadstr << ")" << std::put_time(&buf, "%FT%T") << "]";
+#else
+            sout << "[" << std::put_time(std::gmtime(&time), "%FT%T%z") << "]";
 #endif
-    bool _logdate               = true;
-    bool _is_first_message      = true;
-    bool _is_tty                = false;
+
+            _state.is_first_message = false;
+            return sout.str();
+        }
+        else {
+            return {};
+        }
+
+    }
+
+    std::ostream& _console_stream;
+    std::vector<std::ostringstream> _string_streams;
+
+    Configuration _configuration;
+
+    struct
+    {
+        std::size_t console_print_level = 0u;
+        std::size_t input_print_level = 0u;
+        bool is_first_message = true;
+        bool spinning_bar_on = false;
+        int spinning_bar_counter = 0;
+        bool progress_bar_on = false;
+    } _state;
+
 
     // Spinning bar ---------------------------
-    bool _spinning_bar_on = false;
-    static constexpr std::array<char,4> _spinning_bar_chars = {'/','|','-','\\'};
-    int _spinning_bar_counter = 0;
+    static constexpr std::array<char, 4u> _spinning_bar_chars = { '/','|','-','\\' };
 
     // Progress bar ----------------------------
-    bool _progress_bar_on = false;
-    static constexpr std::array<const char*,9> _progress_bar_chars = {" ", "▏", "▎", "▍", "▌", "▋", "▊", "▉", "█"};
-    constexpr static int _progress_bar_width = 40;
+    static constexpr std::array<const char*, 9u> _progress_bar_chars = { " ", "▏", "▎", "▍", "▌", "▋", "▊", "▉", "█" };
 
 };
 
+inline Logger Logger::out(std::cout);
+inline Logger Logger::err(std::cerr);
+
 inline Logger& out = Logger::out;
 inline Logger& err = Logger::err;
+
+
+} // end namespace loggercpp
+
+
 
 #endif
