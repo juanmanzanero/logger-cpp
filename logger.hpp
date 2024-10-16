@@ -3,22 +3,17 @@
 
 #include "logger.h" 
 
+#include <algorithm>
+
 
 inline Logger Logger::out(std::cout,n_print_levels-1);
 inline Logger Logger::err(std::cerr,n_print_levels-1);
 
 inline Logger& Logger::operator()(const size_t current_print_level)
 {
-    if ( current_print_level < n_print_levels )
-    {
-        _current_print_level = current_print_level;
+    _current_print_level = current_print_level;
 
-        return *this;
-    }
-    else
-    {   
-        throw std::runtime_error("Requested print level higher than allocated");
-    }
+    return *this;
 }
 
 
@@ -36,52 +31,76 @@ inline Logger& Logger::operator<<(const Color& c)
 template<class T>
 inline Logger& Logger::operator<<(const T& t)
 {
-    if ( _print_level >= _current_print_level )
-    {
-        if ( _is_tty && _spinning_bar_on )
-        {
-            stop_spinning_bar();
+    if (_current_print_level < n_print_levels) {
+        std::string logdate;
+        if (_logdate && _is_first_message) {
+            auto time = std::time(nullptr);
+            std::ostringstream sout;
+#ifdef _WIN32
+            struct tm buf;
+            gmtime_s(&buf, &time);
+            char threadstr[10];
+            sprintf_s(threadstr, "%05d", GetCurrentThreadId());
+            sout << "[(" << threadstr << ")" << std::put_time(&buf, "%FT%T") << "]";
+#else
+            sout << std::put_time(std::gmtime(&time), "%FT%T%z");
+#endif
+            logdate = sout.str();
+            _is_first_message = false;
         }
 
-        if ( _is_tty && _progress_bar_on )
+        if (_print_level >= _current_print_level)
         {
-            stop_progress_bar();
+            if (_is_tty && _spinning_bar_on)
+            {
+                stop_spinning_bar();
+            }
+
+            if (_is_tty && _progress_bar_on)
+            {
+                stop_progress_bar();
+            }
+
+            _sOut << logdate << t;
         }
 
-        _sOut << t;
+        for (size_t i = _current_print_level; i < n_print_levels; ++i)
+        {
+            _ss[i] << logdate << t;
+        }
     }
-
-    for (size_t i = _current_print_level; i < n_print_levels; ++i)
-    {
-        _ss[i] << t;
-    }
-
     return *this;
 }
 
 
 inline Logger& Logger::operator<<(std::ostream&(*f)(std::ostream&))
 {
-    if ( _print_level >= _current_print_level )
-    {
+    if (_current_print_level < n_print_levels) {
 
-        if ( _is_tty && _spinning_bar_on )
+        if (_print_level >= _current_print_level)
         {
-            stop_spinning_bar();
+
+            if (_is_tty && _spinning_bar_on)
+            {
+                stop_spinning_bar();
+            }
+
+            if (_is_tty && _progress_bar_on)
+            {
+                stop_progress_bar();
+            }
+
+            (*f)(_sOut);
         }
 
-        if ( _is_tty && _progress_bar_on )
+        for (size_t i = _current_print_level; i < n_print_levels; ++i)
         {
-            stop_progress_bar();
+            (*f)(_ss[i]);
         }
 
-        (*f)(_sOut);
+        _is_first_message = true;
     }
-
-    for (size_t i = _current_print_level; i < n_print_levels; ++i)
-    {
-        (*f)(_ss[i]);
-    }
+    
     return *this;
 }
 
@@ -160,7 +179,7 @@ inline void Logger::progress_bar(const std::string& header, double percentage)
 {
     if ( _is_tty && (_print_level >= _current_print_level) )
     {
-        percentage = std::min(1.0, percentage);
+        percentage = min(double{ 1.0 }, percentage);
 
         if ( _spinning_bar_on ) stop_spinning_bar();
 
@@ -191,7 +210,7 @@ inline void Logger::progress_bar(const std::string& header, double percentage)
         _sOut << "▏";
 
         char buffer[10];
-        sprintf(buffer,"%*.1f",5,percentage*100);
+        sprintf_s(buffer,"%*.1f",5,percentage*100);
 
         _sOut << " (" << buffer << "%" <<")";
         _sOut << std::flush;

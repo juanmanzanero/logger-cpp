@@ -1,13 +1,21 @@
 #ifndef __LOGGER_H__
 #define __LOGGER_H__
 
+#ifdef _WIN32
+#include <io.h>
+#else
 #include<unistd.h>
+#endif
 #include<iostream>
 #include<array>
 #include<sstream>
 #include<iomanip>
 
-inline constexpr size_t n_print_levels = 3;
+
+#ifndef LOGGER_N_PRINT_LEVELS
+#define LOGGER_N_PRINT_LEVELS 3
+#endif
+inline constexpr size_t n_print_levels = LOGGER_N_PRINT_LEVELS;
 
 class Color
 {
@@ -37,7 +45,11 @@ class Logger
 
         if ( &_sOut == &std::cout)
         {
+#ifdef _WIN32
+            _is_tty = _isatty(1); 
+#else
             _is_tty = isatty(1); 
+#endif
         }
     }
 
@@ -63,6 +75,18 @@ class Logger
     void stop_progress_bar();
 
     void set_print_level(const size_t print_level);
+    
+    void enable_logdate() { _logdate = true; }
+    void disable_logdate() { _logdate = false; }
+
+
+    void clear()
+    {
+        for (auto& ss : _ss) {
+            ss.str("");
+            ss.clear();
+        }
+    }
 
     static Logger out;
     static Logger err;
@@ -73,6 +97,8 @@ class Logger
 
     size_t _print_level         = n_print_levels;
     size_t _current_print_level = n_print_levels;
+    bool _logdate               = true;
+    bool _is_first_message      = true;
     bool _is_tty                = false;
 
     // Spinning bar ---------------------------
