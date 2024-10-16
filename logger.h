@@ -14,8 +14,13 @@
 #include<iomanip>
 #include <algorithm>
 
+#ifdef _MSC_VER
+#define sprintf sprintf_s
+#endif
+
 namespace logger {
 
+#ifdef _MSC_VER
 inline std::wstring string_to_wstring(const std::string& input_string)
 {
     std::size_t reqLength = ::MultiByteToWideChar(CP_UTF8, 0, input_string.c_str(), (int)input_string.length(), 0, 0);
@@ -28,6 +33,7 @@ inline std::wstring string_to_wstring(const std::string& input_string)
 
     return input_wstring;
 }
+#endif
 
 
 class Color
@@ -161,7 +167,7 @@ public:
                 else {
 #endif
                     _console_stream << datestr << t;
-#ifdef _WIN32
+#ifdef _MSC_VER
                 }
 #endif
 
@@ -200,7 +206,7 @@ public:
                     }
                 }
 
-#ifdef _WIN32
+#ifdef _MSC_VER
                 if (_configuration.print_to_vs_console) {
 
                     if (f == std::endl<char, std::char_traits<char>>) {
@@ -214,7 +220,7 @@ public:
                     _console_stream << datestr;
                     (*f)(_console_stream);
 
-#ifdef _WIN32
+#ifdef _MSC_VER
                 }
 #endif
             }
@@ -293,7 +299,7 @@ public:
     {
         if (_configuration.is_tty && (_state.console_print_level >= _state.input_print_level)) {
 
-            percentage = min(double{ 1.0 }, percentage);
+            percentage = std::min(double{ 1.0 }, percentage);
 
             if (_state.spinning_bar_on) stop_spinning_bar();
 
@@ -321,7 +327,7 @@ public:
             _console_stream << "▏";
 
             char buffer[10];
-            sprintf_s(buffer, "%*.1f", 5, percentage * 100);
+            sprintf(buffer, "%*.1f", 5, percentage * 100);
 
             _console_stream << " (" << buffer << "%" << ")";
             _console_stream << std::flush;
