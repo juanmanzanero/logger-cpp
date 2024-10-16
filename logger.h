@@ -299,7 +299,11 @@ public:
     {
         if (_configuration.is_tty && (_state.console_print_level >= _state.input_print_level)) {
 
+#ifdef _MSC_VER
+            percentage = min(double{ 1.0 }, percentage);
+#else
             percentage = std::min(double{ 1.0 }, percentage);
+#endif
 
             if (_state.spinning_bar_on) stop_spinning_bar();
 
