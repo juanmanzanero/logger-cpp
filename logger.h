@@ -205,7 +205,7 @@ public:
 
                     if (f == std::endl<char, std::char_traits<char>>) {
                         const auto wstr = string_to_wstring(datestr + "\n");
-                        OutputDebugString(wstr.c_str());
+                        OutputDebugStringW(wstr.c_str());
                     }
 
                 }
