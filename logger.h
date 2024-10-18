@@ -4,15 +4,27 @@
 #ifndef _MSC_VER
 #include <unistd.h>
 #else
+
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#include <stringapiset.h>
 #include <io.h>
+#ifdef min
+#undef min
+#endif
+#ifdef max
+#undef max
+#endif
 #define isatty _isatty
+
 #endif
 
-#include<iostream>
-#include<array>
-#include<sstream>
-#include<iomanip>
+#include <iostream>
+#include <array>
+#include <sstream>
+#include <iomanip>
 #include <algorithm>
+#include <vector>
 
 #ifdef _MSC_VER
 #define sprintf sprintf_s
@@ -299,11 +311,7 @@ public:
     {
         if (_configuration.is_tty && (_state.console_print_level >= _state.input_print_level)) {
 
-#ifdef _MSC_VER
-            percentage = min(double{ 1.0 }, percentage);
-#else
             percentage = std::min(double{ 1.0 }, percentage);
-#endif
 
             if (_state.spinning_bar_on) stop_spinning_bar();
 
